@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinhala AI Assistant | Chana's Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans Sinhala', 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .output-box {
+            position: relative;
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            min-height: 80px;
+            border-left: 4px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .btn-copy {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-copy:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #FFF;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-10 flex flex-col items-center">
+
+    <div class="max-w-4xl w-full space-y-6">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-5xl font-black text-slate-900 mb-2">
+                Sinhala AI Assistant
+            </h1>
+            <p class="text-slate-500 font-medium">By Chana' | ඔබේ ප්‍රශ්නයට බුද්ධිමත් පිළිතුරක්</p>
+        </header>
+
+        <!-- API Key Management -->
+        <div class="glass-card p-4 flex flex-col md:flex-row items-center gap-4">
+            <label class="text-sm font-bold text-slate-600 whitespace-nowrap">API Key:</label>
+            <input type="password" id="apiKeyInput" placeholder="Enter Gemini API Key here..." 
+                   class="w-full p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button onclick="saveApiKey()" class="bg-slate-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-slate-700 transition">Save Key</button>
+        </div>
+
+        <main class="glass-card p-6 md:p-8 space-y-6">
+            <div>
+                <label class="block text-slate-700 font-bold mb-2">ලිවීමට අවශ්‍ය මාතෘකාව ඇතුළත් කරන්න:</label>
+                <textarea id="topicInput" rows="4" 
+                          class="w-full p-4 border-2 border-slate-100 rounded-xl focus:border-blue-400 focus:outline-none transition-all text-lg"
+                          placeholder="උදා: ශ්‍රී ලංකාවේ සංචාරක කර්මාන්තය ගැන ලිපියක්..."></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button id="genPromptBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition transform hover:-translate-y-1">
+                    Prompt එක හදන්න
+                </button>
+                <button id="genRespBtn" disabled class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0">
+                    පිළිතුර ලබාගන්න
+                </button>
+                <button id="genSumBtn" disabled class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0">
+                    සාරාංශය ලබාගන්න
+                </button>
+                <button id="resetBtn" class="bg-rose-500 hover:bg-rose-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition transform hover:-translate-y-1">
+                    සියල්ල මකන්න
+                </button>
+            </div>
+
+            <!-- Outputs Section -->
+            <div class="space-y-6 mt-8">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span> ජනනය කළ Prompt එක
+                    </h3>
+                    <div id="promptOutput" class="output-box border-blue-200 text-slate-700 italic">
+                        මාතෘකාවක් ඇතුළත් කර බොත්තම ඔබන්න...
+                        <button class="btn-copy" onclick="copyText('promptOutput')">Copy</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> AI ප්‍රතිචාරය
+                    </h3>
+                    <div id="responseOutput" class="output-box border-emerald-200 text-slate-800 leading-relaxed min-h-[150px]">
+                        <span class="text-slate-300">ප්‍රතිචාරය මෙහි දිස්වනු ඇත...</span>
+                        <button class="btn-copy" onclick="copyText('responseOutput')">Copy</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span> සාරාංශය
+                    </h3>
+                    <div id="summaryOutput" class="output-box border-amber-200 text-slate-800">
+                        <span class="text-slate-300">සාරාංශය මෙහි දිස්වනු ඇත...</span>
+                        <button class="btn-copy" onclick="copyText('summaryOutput')">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Message Box -->
+        <div id="msgBox" class="fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full bg-slate-900 text-white text-sm shadow-2xl opacity-0 transition-all pointer-events-none z-50">
+            Message
+        </div>
+    </div>
+
+    <script>
+        const topicInput = document.getElementById('topicInput');
+        const promptOutput = document.getElementById('promptOutput');
+        const responseOutput = document.getElementById('responseOutput');
+        const summaryOutput = document.getElementById('summaryOutput');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        
+        const genPromptBtn = document.getElementById('genPromptBtn');
+        const genRespBtn = document.getElementById('genRespBtn');
+        const genSumBtn = document.getElementById('genSumBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Load Key from LocalStorage for security (GitHub version)
+        window.onload = () => {
+            const savedKey = localStorage.getItem('sinhala_ai_key');
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+            }
+        };
+
+        function saveApiKey() {
+            localStorage.setItem('sinhala_ai_key', apiKeyInput.value.trim());
+            showMessage('API Key එක Browser එකේ සුරැකින ලදි!');
+        }
+
+        function showMessage(text) {
+            const box = document.getElementById('msgBox');
+            box.textContent = text;
+            box.style.opacity = '1';
+            setTimeout(() => { box.style.opacity = '0'; }, 3000);
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText.replace('Copy', '').trim();
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showMessage('පිටපත් කරන ලදි!');
+        }
+
+        resetBtn.addEventListener('click', () => {
+            topicInput.value = '';
+            promptOutput.innerHTML = 'මාතෘකාවක් ඇතුළත් කර බොත්තම ඔබන්න...<button class="btn-copy" onclick="copyText(\'promptOutput\')">Copy</button>';
+            responseOutput.innerHTML = '<span class="text-slate-300">ප්‍රතිචාරය මෙහි දිස්වනු ඇත...</span><button class="btn-copy" onclick="copyText(\'responseOutput\')">Copy</button>';
+            summaryOutput.innerHTML = '<span class="text-slate-300">සාරාංශය මෙහි දිස්වනු ඇත...</span><button class="btn-copy" onclick="copyText(\'summaryOutput\')">Copy</button>';
+            genRespBtn.disabled = true;
+            genSumBtn.disabled = true;
+            showMessage('සියල්ල මකා දමන ලදි!');
+        });
+
+        genPromptBtn.addEventListener('click', () => {
+            const topic = topicInput.value.trim();
+            if (!topic) {
+                showMessage('කරුණාකර මාතෘකාවක් ඇතුළත් කරන්න.');
+                return;
+            }
+            const prompt = `පහත මාතෘකාව පිළිබඳ ඉතා සවිස්තරාත්මක, නිවැරදි සහ ආකර්ශනීය ලිපියක් සිංහලෙන් ලියන්න. අවශ්‍ය තැන්වලදී අනු මාතෘකා භාවිතා කරන්න: ${topic}`;
+            promptOutput.innerHTML = `${prompt}<button class="btn-copy" onclick="copyText('promptOutput')">Copy</button>`;
+            genRespBtn.disabled = false;
+            promptOutput.classList.add('fade-in');
+        });
+
+        async function callGemini(promptText, outputElement, nextBtn) {
+            const key = apiKeyInput.value.trim();
+            if (!key) {
+                showMessage('කරුණාකර API Key එක ඇතුළත් කර Save කරන්න.');
+                return;
+            }
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;
+            outputElement.innerHTML = '<div class="flex items-center gap-3 text-slate-400"><span class="loader"></span> ප්‍රතිචාරය ලැබෙමින් පවතී...</div>';
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: promptText }] }]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+
+                const resultText = data.candidates[0].content.parts[0].text;
+                outputElement.innerHTML = `${resultText.replace(/\n/g, '<br>')}<button class="btn-copy" onclick="copyText('${outputElement.id}')">Copy</button>`;
+                if (nextBtn) nextBtn.disabled = false;
+                outputElement.classList.add('fade-in');
+            } catch (error) {
+                outputElement.innerHTML = `<span class="text-red-500 font-bold">දෝෂයකි: ${error.message}</span>`;
+            }
+        }
+
+        genRespBtn.addEventListener('click', () => {
+            const text = promptOutput.innerText.replace('Copy', '').trim();
+            callGemini(text, responseOutput, genSumBtn);
+        });
+
+        genSumBtn.addEventListener('click', () => {
+            const fullText = responseOutput.innerText.replace('Copy', '').trim();
+            const summaryPrompt = `පහත සිංහල ලිපියේ ඇති වැදගත්ම කරුණු 5ක් පමණක් ඇතුළත් කර සාරාංශයක් ලියන්න:\n\n${fullText}`;
+            callGemini(summaryPrompt, summaryOutput, null);
+        });
+    </script>
+</body>
+</html>
